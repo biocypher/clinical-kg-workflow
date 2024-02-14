@@ -1,0 +1,111 @@
+import os
+import glob
+
+SNOMED_CT_FILE = glob.glob("input/SnomedCT_InternationalRF2_*.zip")[0]
+
+rule all:
+    input:
+        "output/ontology_snomed_ct.owl",
+        "output/ontology_ICD10CM_patched.ttl",
+        directory("patient-kg/biocypher-out/")
+
+rule setup_snomed_ct_ontology:
+    input:
+        SNOMED_CT_FILE
+    output:
+        "output/ontology_snomed_ct.owl"
+    shell:
+        """
+        echo "Setup Snomed CT ontology"
+
+        echo "Step 1: Get snomed-owl-toolkit latest release jar"
+        if [ ! -f "workflow/scripts/snomed-owl-toolkit-3.0.6-executable.jar" ]; then
+            echo "Download snomed-owl-toolkit jar"
+            DOWNLOAD_URL=https://github.com/IHTSDO/snomed-owl-toolkit/releases/download/3.0.6/snomed-owl-toolkit-3.0.6-executable.jar
+            curl -LJO "$DOWNLOAD_URL"
+            mv -f snomed-owl-toolkit-3.0.6-executable.jar workflow/scripts/
+        fi
+
+        echo "Step 2: Get robot latest release jar"
+        if [ ! -f "workflow/scripts/robot.jar" ]; then
+            echo "Download robot jar"
+            DOWNLOAD_URL=https://github.com/ontodev/robot/releases/download/v1.9.5/robot.jar
+            curl -LJO "$DOWNLOAD_URL"
+            mv -f robot.jar workflow/scripts/
+        fi
+
+        echo "Step 3: Convert Snomed CT RF2 to functional OWL"
+        java -Xms4g -jar workflow/scripts/snomed-owl-toolkit-*-executable.jar -rf2-to-owl -rf2-snapshot-archives {input}
+        
+        echo "Step 4: Convert functional OWL to OWL"
+        java -Xms4g -jar workflow/scripts/robot.jar convert -i ontology-*.owl --format owl -o {output}
+        
+        echo "Step 5: Delete intermediate files"
+        rm -f ontology-*.owl
+        """
+
+rule setup_icd_ontology:
+    input:
+        "input/ICD10CM.ttl"
+    output:
+        "output/ontology_ICD10CM_patched.ttl"
+    shell:
+        """
+        echo "Setup ICD10CM ontology"
+
+        cp {input} {output}
+
+        echo "Step 1: Replace skos:prefLabel with rdfs:label"
+        sed -i 's/skos:prefLabel/rdfs:label/g' {output}
+
+        echo "Step 2: Replace rdfs:subClassOf owl:Thing with rdfs:subClassOf <Icdroot>"
+        sed -i 's/rdfs:subClassOf owl:Thing/rdfs:subClassOf <Icdroot>/g' {output}
+
+        echo "Step 3: Add the root node"
+        sed -i '/@prefix umls: <http:\/\/bioportal.bioontology.org\/ontologies\/umls\/>/a\<Icdroot> a owl:Class ; rdfs:label "Icdroot" .' {output}
+        """
+
+rule create_knowledge_graph:
+    input:
+        ontology_snomed_ct = "output/ontology_snomed_ct.owl",
+        ontology_ICD10CM_patched = "output/ontology_ICD10CM_patched.ttl",
+        data = "input/data.csv",
+        mapping = "input/mapping.yaml",
+        snomed_ct = SNOMED_CT_FILE,
+    output:
+        directory("patient-kg/biocypher-out/")
+    # TODO: Add conda environment
+    #conda:
+    #    "envs/patient-kg-env.yaml"
+    shell:
+        """
+        echo "Creating knowledge graph"
+        
+        echo "Step 1: Clone the KG repository"
+        if [ -d "patient-kg" ]; then
+            echo "Deleting patient-kg folder"
+            rm -rf patient-kg
+        fi
+        git clone https://github.com/biocypher/patient-kg.git
+
+        echo "Step 2: Copy ontology files into KG ontology directory"
+        cp {input.ontology_snomed_ct} patient-kg/config/ontologies/ontology_snomed_ct.owl
+        cp {input.ontology_ICD10CM_patched} patient-kg/config/ontologies/ontology_ICD10CM_patched.ttl
+
+        echo "Step 3: Copy mapping and data files into the data directory"
+        cp {input.mapping} patient-kg/data/mapping.yaml
+        cp {input.data} patient-kg/data/data.csv
+
+        echo "Step 4: Copy Snomed CT description snapshot file into patient-kg for adapter"
+        unzip {input.snomed_ct}
+        cp SnomedCT_*/Snapshot/Terminology/sct2_Description*.txt patient-kg/patient_kg/adapters/sct2_Description_Snapshot-en_INT_20231001.txt
+        rm -rf SnomedCT_*
+
+        echo "Step 5: Generate schema file and place it in the config folder"
+        cd patient-kg
+        poetry install
+        poetry run python generate_schema_config_for_data.py
+
+        echo "Step 6: Run BioCypher"
+        poetry run python create_knowledge_graph.py
+        """

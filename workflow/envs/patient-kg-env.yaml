@@ -1,0 +1,4 @@
+name: patient-kg-env
+dependencies:
+  - git
+  - git+https://github.com/biocypher/patient-kg.git

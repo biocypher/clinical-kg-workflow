@@ -1,0 +1,20 @@
+results/**
+resources/**
+logs/**
+.snakemake
+.snakemake/**
+
+workflow/scripts/robot.jar
+workflow/scripts/snomed-owl-toolkit-*.jar
+output/*
+!output/.gitkeep
+input/*
+!input/data.csv
+!input/mapping.yaml
+patient-kg/
+
+# don't use cicd for now
+.github/*
+
+.template
+.snakemake-workflow-catalog.yml

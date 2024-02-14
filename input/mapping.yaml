@@ -1,0 +1,57 @@
+Nodes:
+  # clinical terms (Snomed CT)
+  Patient ID:
+    coding_system: snomedct
+    object_type: instance
+    id_in_coding_system: 116154003
+  Overall Survival (days):
+    coding_system: snomedct
+    object_type: concept
+    id_in_coding_system: 445320007
+  Clinical_Oxygen saturation in Arterial blood ; %:
+    coding_system: snomedct
+    object_type: concept
+    id_in_coding_system: 442476006
+  # Lab values (Loinc)
+  LAB_granulocytes:
+    coding_system: loinc
+    object_type: concept
+    id_in_coding_system: 26449-9
+  # diseases (ICD)
+  ICD_B95:
+    coding_system: icd10
+    object_type: concept
+    id_in_coding_system: B95
+  ICD_A02:
+    coding_system: icd10
+    object_type: concept
+    id_in_coding_system: A02
+  Cancer_C01:
+    coding_system: icd10
+    object_type: concept
+    id_in_coding_system: C01
+  # operations and procedures (german OPS)
+  OPS_1-100:
+    coding_system: ops
+    object_type: concept
+    id_in_coding_system: 1-100
+
+Edges:
+  HAS_CLINICAL_PARAMETER:
+    source_node: Patient ID
+    target_nodes: [Overall Survival (days), Clinical_Oxygen saturation in Arterial blood ; %]
+    properties:
+      value:
+        type: float
+  HAS_LAB_VALUE:
+    source_node: Patient ID
+    target_nodes: [LAB_granulocytes]
+    properties:
+      value:
+        type: float
+  HAS_DISEASE:
+    source_node: Patient ID
+    target_nodes: [ICD_B95, ICD_A02]
+  HAS_TREATMENT:
+    source_node: Patient ID
+    target_nodes: [OPS_1-100]
