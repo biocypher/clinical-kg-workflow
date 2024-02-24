@@ -97,8 +97,8 @@ rule create_knowledge_graph:
         cp {input.data} patient-kg/data/data.csv
 
         echo "Step 4: Copy Snomed CT description snapshot file into patient-kg for adapter"
-        unzip {input.snomed_ct}
-        cp SnomedCT_*/Snapshot/Terminology/sct2_Description*.txt patient-kg/patient_kg/adapters/sct2_Description_Snapshot-en_INT_20231001.txt
+        unzip -o {input.snomed_ct}
+        cp -f SnomedCT_*/Snapshot/Terminology/sct2_Description*.txt patient-kg/patient_kg/adapters/sct2_Description_Snapshot-en_INT_20231001.txt
         rm -rf SnomedCT_*
 
         echo "Step 5: Generate schema file and place it in the config folder"
