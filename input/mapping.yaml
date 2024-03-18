@@ -51,7 +51,7 @@ Edges:
         type: float
   HAS_DISEASE:
     source_node: Patient ID
-    target_nodes: [ICD_B95, ICD_A02]
+    target_nodes: [ICD_B95, ICD_A02, Cancer_C01]
   HAS_TREATMENT:
     source_node: Patient ID
     target_nodes: [OPS_1-100]
